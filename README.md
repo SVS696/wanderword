@@ -119,7 +119,7 @@ GET /api/ollama/tags?baseUrl=http://localhost:11434
 
 ## Credits
 
-Inspired by [WanderWord](https://wanderword-141284551734.us-west1.run.app/) by Google.
+Inspired by [WanderWord](https://wanderword-141284551734.us-west1.run.app/) (author unknown).
 
 ## License
 
