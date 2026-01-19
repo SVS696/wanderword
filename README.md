@@ -2,6 +2,8 @@
 
 Interactive etymology visualization showing how words migrate across the globe through history.
 
+![WanderWord Screenshot](screenshot.png)
+
 ## Features
 
 - **Interactive World Map** - D3.js powered map with zoom/pan, animated journey paths
