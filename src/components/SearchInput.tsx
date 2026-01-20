@@ -5,6 +5,25 @@ import type { AIProvider, AIProviderConfig } from '@/types';
 
 const SUGGESTIONS = ["tea", "coffee", "orange", "algorithm", "chocolate", "safari"];
 
+const LANGUAGE_SUGGESTIONS = [
+  "English",
+  "Русский",
+  "Español",
+  "Deutsch",
+  "Français",
+  "中文",
+  "日本語",
+  "Português",
+  "Italiano",
+  "한국어",
+  "العربية",
+  "हिन्दी",
+  "Türkçe",
+  "Polski",
+  "Nederlands",
+  "Українська",
+];
+
 interface CliAgentStatus {
   name: string;
   installed: boolean;
@@ -62,12 +81,14 @@ export const SearchInput: React.FC<SearchInputProps> = ({ onSearch, isLoading })
     baseUrl: 'http://localhost:11434',
     model: 'llama3'
   });
+  const [responseLanguage, setResponseLanguage] = useState('English');
 
   // Dynamic status
   const [cliAgents, setCliAgents] = useState<CliAgentStatus[]>([]);
   const [ollamaModels, setOllamaModels] = useState<OllamaModel[]>([]);
   const [ollamaLoading, setOllamaLoading] = useState(false);
   const [ollamaError, setOllamaError] = useState<string | null>(null);
+  const [saveNotification, setSaveNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Load saved config
   useEffect(() => {
@@ -78,6 +99,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({ onSearch, isLoading })
         if (config.apiKeys) setApiKeys(config.apiKeys);
         if (config.ollamaConfig) setOllamaConfig(config.ollamaConfig);
         if (config.provider) setProvider(config.provider);
+        if (config.responseLanguage) setResponseLanguage(config.responseLanguage);
       }
     } catch {}
   }, []);
@@ -123,12 +145,24 @@ export const SearchInput: React.FC<SearchInputProps> = ({ onSearch, isLoading })
   }, [showSettings, provider, fetchOllamaModels]);
 
   // Save config
-  const saveConfig = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      apiKeys,
-      ollamaConfig,
-      provider
-    }));
+  const saveConfig = (showNotification = false) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        apiKeys,
+        ollamaConfig,
+        provider,
+        responseLanguage
+      }));
+      if (showNotification) {
+        setSaveNotification({ type: 'success', message: 'Settings saved' });
+        setTimeout(() => setSaveNotification(null), 2000);
+      }
+    } catch (error) {
+      if (showNotification) {
+        setSaveNotification({ type: 'error', message: 'Failed to save settings' });
+        setTimeout(() => setSaveNotification(null), 3000);
+      }
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -142,7 +176,8 @@ export const SearchInput: React.FC<SearchInputProps> = ({ onSearch, isLoading })
     const providerInfo = PROVIDERS.find(p => p.id === provider)!;
     const config: AIProviderConfig = {
       provider,
-      timeout: 90
+      timeout: 90,
+      responseLanguage: responseLanguage.trim() || 'English'
     };
 
     if (providerInfo.needsKey) {
@@ -324,10 +359,31 @@ export const SearchInput: React.FC<SearchInputProps> = ({ onSearch, isLoading })
               className="mt-2 border border-black bg-white/90 p-3 space-y-3 overflow-hidden"
             >
               <div className="flex justify-between items-center">
-                <span className="text-[10px] font-black uppercase">API Settings</span>
+                <span className="text-[10px] font-black uppercase">Settings</span>
                 <button onClick={() => setShowSettings(false)} className="text-black/40 hover:text-black">
                   <X size={14} />
                 </button>
+              </div>
+
+              {/* Response Language */}
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold text-black/60 uppercase">Response Language</label>
+                <input
+                  type="text"
+                  list="language-suggestions"
+                  value={responseLanguage}
+                  onChange={(e) => setResponseLanguage(e.target.value)}
+                  placeholder="English"
+                  className="w-full bg-white border border-black/20 focus:border-black text-black px-2 py-1 text-[10px] font-mono outline-none"
+                />
+                <datalist id="language-suggestions">
+                  {LANGUAGE_SUGGESTIONS.map(lang => (
+                    <option key={lang} value={lang} />
+                  ))}
+                </datalist>
+                <p className="text-[8px] text-black/40">
+                  Choose from list or type any language
+                </p>
               </div>
 
               {/* API Keys */}
@@ -421,11 +477,30 @@ export const SearchInput: React.FC<SearchInputProps> = ({ onSearch, isLoading })
               </div>
 
               <button
-                onClick={saveConfig}
+                onClick={() => saveConfig(true)}
                 className="w-full bg-black text-white py-1 text-[10px] font-bold uppercase hover:bg-gray-800"
               >
                 Save Settings
               </button>
+
+              {/* Save notification */}
+              <AnimatePresence>
+                {saveNotification && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    className={`text-[10px] font-bold text-center py-1 px-2 ${
+                      saveNotification.type === 'success'
+                        ? 'bg-green-100 text-green-700 border border-green-300'
+                        : 'bg-red-100 text-red-700 border border-red-300'
+                    }`}
+                  >
+                    {saveNotification.type === 'success' ? '✓ ' : '✗ '}
+                    {saveNotification.message}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
         </AnimatePresence>

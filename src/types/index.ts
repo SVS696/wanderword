@@ -44,4 +44,5 @@ export interface AIProviderConfig {
   baseUrl?: string;  // For Ollama custom endpoint
   model?: string;    // Model name (e.g., llama3, mistral)
   timeout?: number;
+  responseLanguage?: string;  // Language for AI response (e.g., "English", "Русский")
 }

@@ -49,17 +49,23 @@ const JSON_SCHEMA = `{
   "funFact": "string - optional interesting tidbit"
 }`;
 
-const buildPrompt = (word: string) => `Trace the etymological journey of the word: "${word}"
+const buildPrompt = (word: string, language: string = 'English') => {
+  const languageInstruction = language && language !== 'English'
+    ? `\n\nIMPORTANT: Write all text content (currentMeaning, narrative, notes, funFact, routeSummary) in ${language}. Keep only the schema field names in English.`
+    : '';
 
-${SYSTEM_INSTRUCTION}
+  return `Trace the etymological journey of the word: "${word}"
+
+${SYSTEM_INSTRUCTION}${languageInstruction}
 
 Respond with JSON matching this schema:
 ${JSON_SCHEMA}
 
 Return ONLY the JSON object, no other text.`;
+};
 
 // ============== Gemini API ==============
-export async function fetchWordJourneyGeminiAPI(word: string, apiKey: string): Promise<WordJourney> {
+export async function fetchWordJourneyGeminiAPI(word: string, apiKey: string, language?: string): Promise<WordJourney> {
   const { GoogleGenerativeAI } = await import('@google/generative-ai');
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
@@ -67,7 +73,7 @@ export async function fetchWordJourneyGeminiAPI(word: string, apiKey: string): P
   const result = await model.generateContent({
     contents: [{
       role: 'user',
-      parts: [{ text: buildPrompt(word) }]
+      parts: [{ text: buildPrompt(word, language) }]
     }],
     systemInstruction: SYSTEM_INSTRUCTION,
     generationConfig: {
@@ -80,7 +86,7 @@ export async function fetchWordJourneyGeminiAPI(word: string, apiKey: string): P
 }
 
 // ============== OpenAI API ==============
-export async function fetchWordJourneyOpenAI(word: string, apiKey: string): Promise<WordJourney> {
+export async function fetchWordJourneyOpenAI(word: string, apiKey: string, language?: string): Promise<WordJourney> {
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -91,7 +97,7 @@ export async function fetchWordJourneyOpenAI(word: string, apiKey: string): Prom
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: SYSTEM_INSTRUCTION },
-        { role: 'user', content: buildPrompt(word) }
+        { role: 'user', content: buildPrompt(word, language) }
       ],
       response_format: { type: 'json_object' }
     })
@@ -107,7 +113,7 @@ export async function fetchWordJourneyOpenAI(word: string, apiKey: string): Prom
 }
 
 // ============== Anthropic API ==============
-export async function fetchWordJourneyAnthropic(word: string, apiKey: string): Promise<WordJourney> {
+export async function fetchWordJourneyAnthropic(word: string, apiKey: string, language?: string): Promise<WordJourney> {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -121,7 +127,7 @@ export async function fetchWordJourneyAnthropic(word: string, apiKey: string): P
       max_tokens: 4096,
       system: SYSTEM_INSTRUCTION,
       messages: [
-        { role: 'user', content: buildPrompt(word) }
+        { role: 'user', content: buildPrompt(word, language) }
       ]
     })
   });
@@ -142,14 +148,15 @@ export async function fetchWordJourneyAnthropic(word: string, apiKey: string): P
 export async function fetchWordJourneyOllama(
   word: string,
   baseUrl: string = 'http://localhost:11434',
-  model: string = 'llama3'
+  model: string = 'llama3',
+  language?: string
 ): Promise<WordJourney> {
   const response = await fetch(`${baseUrl}/api/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model,
-      prompt: buildPrompt(word),
+      prompt: buildPrompt(word, language),
       system: SYSTEM_INSTRUCTION,
       stream: false,
       format: 'json'
@@ -176,14 +183,15 @@ export async function fetchWordJourneyOllama(
 export async function fetchWordJourneyCLI(
   word: string,
   provider: AIProvider,
-  timeout = 60
+  timeout = 60,
+  language?: string
 ): Promise<WordJourney> {
   const response = await fetch('/api/cli-agent', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: provider,
-      prompt: buildPrompt(word),
+      prompt: buildPrompt(word, language),
       timeout
     })
   });
@@ -262,29 +270,29 @@ export async function fetchWordJourney(
   word: string,
   config: AIProviderConfig
 ): Promise<WordJourney> {
-  const { provider, apiKey, baseUrl, model, timeout } = config;
+  const { provider, apiKey, baseUrl, model, timeout, responseLanguage } = config;
 
   switch (provider) {
     case 'gemini-api':
       if (!apiKey) throw new Error('API key required for Gemini API');
-      return fetchWordJourneyGeminiAPI(word, apiKey);
+      return fetchWordJourneyGeminiAPI(word, apiKey, responseLanguage);
 
     case 'openai-api':
       if (!apiKey) throw new Error('API key required for OpenAI API');
-      return fetchWordJourneyOpenAI(word, apiKey);
+      return fetchWordJourneyOpenAI(word, apiKey, responseLanguage);
 
     case 'anthropic-api':
       if (!apiKey) throw new Error('API key required for Anthropic API');
-      return fetchWordJourneyAnthropic(word, apiKey);
+      return fetchWordJourneyAnthropic(word, apiKey, responseLanguage);
 
     case 'ollama':
-      return fetchWordJourneyOllama(word, baseUrl || 'http://localhost:11434', model || 'llama3');
+      return fetchWordJourneyOllama(word, baseUrl || 'http://localhost:11434', model || 'llama3', responseLanguage);
 
     case 'gemini':
     case 'claude':
     case 'codex':
     case 'qwen':
-      return fetchWordJourneyCLI(word, provider, timeout || 60);
+      return fetchWordJourneyCLI(word, provider, timeout || 60, responseLanguage);
 
     default:
       return fetchWordJourneyMock(word);
