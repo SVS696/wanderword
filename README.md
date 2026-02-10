@@ -32,7 +32,7 @@ Interactive etymology visualization showing how words migrate across the globe t
 npm install
 
 # Start API server (terminal 1)
-npm run server
+npm run api
 
 # Start dev server (terminal 2)
 npm run dev

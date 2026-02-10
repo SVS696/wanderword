@@ -50,7 +50,7 @@ server/
 npm install
 
 # Start API server (for CLI agents)
-npm run server
+npm run api
 
 # Start dev server (in another terminal)
 npm run dev
